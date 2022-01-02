@@ -10,6 +10,8 @@ pub enum TokenKind {
     OpenBracket(BracketKind),
     CloseBracket(BracketKind),
 
+    Quote,
+
     Integer,
     Real,
 
@@ -50,14 +52,14 @@ fn bracket(c: char) -> Option<TokenKind> {
 
 #[derive(Debug, Clone)]
 pub struct Token<'a> {
-    kind: TokenKind,
-    data: &'a str,
-    span: Span
+    pub kind: TokenKind,
+    pub data: &'a str,
+    pub span: Span
 }
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'a> {
-    data: &'a str,
+    pub data: &'a str,
     stream: Peekable<CharIndices<'a>>
 }
 
@@ -87,6 +89,16 @@ impl<'a> Iterator for Lexer<'a> {
 
                 Some(Token {
                     kind: TokenKind::Whitespace,
+                    data: &self.data[start..end],
+                    span: Span::new(start as u32, end as u32)
+                })
+            }
+
+            '\'' => {
+                self.stream.next().unwrap();
+
+                Some(Token {
+                    kind: TokenKind::Quote,
                     data: &self.data[start..end],
                     span: Span::new(start as u32, end as u32)
                 })
@@ -141,7 +153,8 @@ impl<'a> Lexer<'a> {
     fn valid_symbol(c: char) -> bool {
         !c.is_whitespace() &&
         !bracket(c).is_some() &&
-        c != '"'
+        c != '"' &&
+        c != '\''
     }
 
     fn lex_symbol(&mut self) -> Option<Token<'a>> {
@@ -170,5 +183,15 @@ impl<'a> Lexer<'a> {
             data: data,
             span: Span::new(start as u32, end as u32)
         })
+    }
+
+    fn next_useful(&mut self) -> Option<Token<'a>> {
+        let token = self.next()?;
+
+        if token.kind == TokenKind::Comment || token.kind == TokenKind::Whitespace {
+            self.next_useful()
+        } else {
+            Some(token)
+        }
     }
 }
