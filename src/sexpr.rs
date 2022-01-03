@@ -28,7 +28,7 @@ pub enum Atom {
     Quoted(Box<Sexpr>)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AtomKind {
     Symbol,
     Integer,
