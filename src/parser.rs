@@ -6,6 +6,21 @@ use crate::lexer::Lexer;
 use crate::sexpr::{self, Atom, AtomKind, Sexpr, SexprError, SexprErrorKind};
 
 #[derive(Debug, Clone)]
+pub struct ItemPath {
+    path: Vec<String>
+}
+
+impl ItemPath {
+    fn from_str(s: &str) -> ItemPath {
+        ItemPath {
+            path: s.split('.')
+                .map(Into::into)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ParserErrorKind {
     Sexpr(SexprErrorKind),
     ExpectedStatement,
@@ -58,7 +73,7 @@ fn expect_list(sexpr: &Sexpr) -> Result<&Vec<Sexpr>, ParserError> {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
-    Symbol(String),
+    Symbol(ItemPath),
     Integer(i128),
     Real(f64),
     String(String),
@@ -66,7 +81,7 @@ pub enum ExpressionKind {
     Empty,
 
     Call {
-        func: String,
+        func: ItemPath,
         args: Vec<Expression> 
     },
 }
@@ -80,7 +95,7 @@ pub struct Expression {
 fn parse_expr(sexpr: Sexpr) -> Result<Expression, ParserError> {
     match sexpr {
         Sexpr { atom: Atom::Symbol(i), span } => Ok(Expression {
-            kind: ExpressionKind::Symbol(i),
+            kind: ExpressionKind::Symbol(ItemPath::from_str(&i)),
             span: span
         }),
         Sexpr { atom: Atom::Integer(i), span } => Ok(Expression {
@@ -113,7 +128,7 @@ fn parse_expr(sexpr: Sexpr) -> Result<Expression, ParserError> {
 
                     Ok(Expression {
                         kind: ExpressionKind::Call {
-                            func: fun.clone(),
+                            func: ItemPath::from_str(&fun),
                             args: args
                         },
                         span: span
@@ -167,13 +182,13 @@ impl FromStr for BaseType {
 pub enum TypeData {
     Empty,
     BaseType(BaseType),
-    TypeRef(String),
+    TypeRef(ItemPath),
     Fun {
         args: Vec<Type>,
         ret: Box<Type>,
     },
     Generic {
-        of: String,
+        of: ItemPath,
         args: Vec<Type>
     }
 }
@@ -194,7 +209,7 @@ fn parse_type(sexpr: Sexpr) -> Result<Type, ParserError> {
                 }),
 
                 s => Ok(Type {
-                    data: TypeData::TypeRef(s.into()),
+                    data: TypeData::TypeRef(ItemPath::from_str(s)),
                     span: span
                 })
             }
@@ -233,7 +248,7 @@ fn parse_type(sexpr: Sexpr) -> Result<Type, ParserError> {
         
                     Ok(Type {
                         data: TypeData::Generic {
-                            of: of.into(),
+                            of: ItemPath::from_str(of),
                             args: args
                         },
                         span: span
@@ -261,8 +276,8 @@ pub enum StatementKind {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
-    kind: StatementKind,
-    span: Span
+    pub kind: StatementKind,
+    pub span: Span
 }
 
 fn parse_statement(sexpr: Sexpr) -> Result<Statement, ParserError> {
@@ -338,7 +353,7 @@ fn parse_statement(sexpr: Sexpr) -> Result<Statement, ParserError> {
 
 #[derive(Debug, Clone)]
 pub struct CompilationUnit {
-    statements: Vec<Statement>,
+    pub statements: Vec<Statement>,
 }
 
 pub fn parse<'a>(src: &'a str) -> Result<CompilationUnit, ParserError> {

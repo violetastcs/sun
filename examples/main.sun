@@ -1,6 +1,2 @@
-(: add [Fun [i32 i32] i32])
-(defun add (n1 n2)
-    (+ n1 n2))
-
 (defun main ()
-    (printn (add 1 2)))
+    (return 0))
